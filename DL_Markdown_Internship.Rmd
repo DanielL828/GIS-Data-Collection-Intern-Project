@@ -1,0 +1,415 @@
+---
+title: "DL_Data_Collection_Intern"
+output: html_document
+date: '2022-08-15'
+---
+
+Loading in packages used for this program
+```{r}
+install.packages('here')
+install.packages('tidyverse')
+install.packages('sf')
+install.packages('janitor')
+install.packages('dplyr')
+install.packages('rgdal')
+library(janitor)
+library(dplyr)
+library(tidyverse)
+library(sf)
+library(here)
+library(rgdal)
+library(sp)
+```
+
+
+Reading in shapefiles using st_read from sf package.
+```{r}
+
+graz_sf <- here("/Users/daniellopez/Downloads/Internship Data Packs/Projects_Grazing.shp") %>%
+  st_read()
+veg_comp_sf <- here("/Users/daniellopez/Downloads/Internship Data Packs/SB_City_Completed_Veg_Projects.shp") %>%
+  st_read()
+mixed_sf <- here("/Users/daniellopez/Downloads/Internship Data Packs/Projects_MixedTreatment.shp") %>%
+  st_read()
+fuel_treatments_sf <- here("/Users/daniellopez/Downloads/Internship Data Packs/Fuel_Treatment_Polygons_20220523.shp") %>%
+  st_read()
+sbc_future_sf <- here("/Users/daniellopez/Downloads/Internship Data Packs/SB_City_Future_Projects.shp") %>%
+  st_read()
+
+```
+
+
+Viewing coordinate reference system of shapefiles
+```{r}
+
+st_crs(graz_sf)
+st_crs(veg_comp_sf)
+st_crs(mixed_sf)
+st_crs(fuel_treatments_sf)
+st_crs(sbc_future_sf)
+
+```
+
+
+Re-projecting crs(coordinate reference system) of two shapefiles to match other 3 as [NAD83 CRS] from [WGS 84]
+```{r}
+
+graz_sf <- st_transform(graz_sf, st_crs(fuel_treatments_sf))
+st_crs(graz_sf)
+
+mixed_sf <- st_transform(mixed_sf, st_crs(fuel_treatments_sf))
+st_crs(mixed_sf)
+
+```
+
+
+Selecting the columns only wanted from shapefile attribute tables
+```{r}
+
+graz_sf <- select(graz_sf, "Original Shapefile Name", "Agency", "Date Acquired","Acres", "Treatment_", "Timeframe_", "Date Completed", "Other")
+
+mixed_sf <- select(mixed_sf, "Original Shapefile Name", "Agency", "Date Acquired", "Project_Na", "Acres", "Treatment_", "Other")
+
+veg_comp_sf <- select(veg_comp_sf, "SHAPE_Area", "TREATMENT_", "WorkArea", "FUEL_MGMT", "Treatment")
+
+fuel_treatments_sf <- select(fuel_treatments_sf, "project_na", "acres", "poly_type")
+
+sbc_future_sf <- select(sbc_future_sf, "VMU_Name", "Shape_STAr")
+
+```
+
+
+Adding columns wanted by using mutate + the shapefile name.
+```{r}
+
+##
+graz_sf <- mutate(graz_sf, 
+                  "Agency" = "Montecito", 
+                  "Project Name" = "NA",
+                  "Date Acquired" = "Jul 11, 2022",
+                  "Date Completed" = "Proposed Treatments",
+                  "Original Shapefile Name" = "Projects_Grazing", 
+                  "Other" = "NA"
+)
+##
+
+##
+mixed_sf <- mutate(mixed_sf, 
+                   "Agency" = "Montecito", 
+                   "Date Acquired" = "Jul 11, 2022", 
+                   "Date Completed" = "Proposed Treatments",
+                   "Original Shapefile Name" = "Projects_MixedTreatment", 
+                   "Other" = "NA"
+)
+##
+
+##
+veg_comp_sf <- mutate(veg_comp_sf, 
+                    "Agency" = "Santa Barbara City",
+                    "Date Acquired" = "Jul 12, 2022", 
+                    "Original Shapefile Name" = "SB_City_Completed_Veg_Projects"
+)
+##
+
+```
+
+
+```{r}
+
+##
+sbc_future_sf <- mutate(sbc_future_sf, 
+                    "Agency" = "Santa Barbara City",
+                    "Date Acquired" = "Aug 2, 2022",
+                    "Date Completed" = "NA",
+                    "Treatment Type" = "NA",
+                    "Original Shapefile Name" = "SB_City_Future_Projects", 
+                    "Other" = "NA"
+)
+
+##
+
+##
+
+fuel_treatments_sf <- mutate(fuel_treatments_sf, 
+                             "Agency" = "Santa Barbara County",
+                             "Date Acquired" = "Jul 6, 2022",
+                             "Date Completed" = "NA",
+                             "Original Shapefile Name" = "Fuel_Treatment_Polygons_20220523", 
+                             "Other" = "NA"
+)
+
+##
+
+```
+
+
+Renaming columns for grazing, mixed fuel treatments, vegetation completed, fuel treatments, & SB city completed project shapefiles.
+```{r}
+##
+graz_sf <- rename(graz_sf, 
+                  "Treatment Type" = "Treatment_",
+                  "Time Frame (Days)" = "Timeframe_",
+                  "Acreage" = "Acres"
+)
+##
+
+##
+mixed_sf <- rename(mixed_sf, 
+                   "Project Name" = "Project_Na",
+                   "Treatment Type" = "Treatment_",
+                   "Acreage" = "Acres"
+)
+##
+
+##
+veg_comp_sf <- rename(veg_comp_sf, 
+                      "Treatment Type" = "TREATMENT_", 
+                      "Other" = "Treatment", 
+                      "Project Name" = "WorkArea", 
+                      "Date Completed" = "FUEL_MGMT", 
+                      "Acreage" = "SHAPE_Area"
+                      
+)
+##
+
+##
+fuel_treatments_sf <- rename(fuel_treatments_sf, 
+                             "Project Name" = "project_na", 
+                             "Acreage" = "acres",
+                             "Treatment Type" = "poly_type"
+)
+##
+
+##
+sbc_future_sf <- rename(sbc_future_sf, 
+                        "Project Name" = "VMU_Name", 
+                        "Acreage" = "Shape_STAr"
+)
+
+```
+
+
+Merging together data tables and shapefiles
+```{r}
+
+merge_1 <- bind_rows(graz_sf, 
+                     mixed_sf
+)
+
+"This below I used to reorder the columns how I wanted them"
+merge_1 <- select(merge_1, 
+          1, 2, 3, 
+          9, 4, 5, 
+          6, 7, 8
+)
+
+
+##
+
+merge_2 <- bind_rows(graz_sf, 
+                     mixed_sf, 
+                     veg_comp_sf
+)
+
+merge_2 <- select(merge_2, 
+          1, 2, 3, 
+          9, 4, 5, 
+          6, 7, 8
+)
+
+##
+
+##
+merge_3 <- bind_rows(graz_sf, 
+                     mixed_sf, 
+                     veg_comp_sf, 
+                     sbc_future_sf
+)
+
+merge_3 <- select(merge_3, 
+           1, 2, 3, 
+          9, 4, 5, 
+          6, 7, 8
+)
+
+##
+
+##
+
+merge_4 <- bind_rows(graz_sf,
+                     mixed_sf,
+                     veg_comp_sf,
+                     sbc_future_sf,
+                     fuel_treatments_sf
+)
+
+##
+
+merge_4 <- select(merge_4, 
+          1, 2, 3, 
+          4, 6, 9, 
+          5, 7, 8
+)
+
+##
+
+```
+
+
+Exporting full data merge of 5 shapefiles as a csv file and as a shapefile
+```{r}
+
+st_write(merge_4, "Complete Data Merge.csv")
+st_write(merge_4, "Complete_Data_Merge.shp")
+
+```
+
+
+This is reading in the Carpinteria shapfile.
+```{r}
+
+carp_sf <- here("/Users/daniellopez/Downloads/Internship Data Packs/Carpinteria Merge.shp") %>%
+  st_read()
+
+```
+
+
+By using "select" I am choosing which columns I want from the carpinteria shapefile data table.
+```{r}
+
+carp_sf <- select(carp_sf, "Activity", "fuel_type", "Acres", "Name_Treat", "Comp_Date","layer")
+
+```
+
+
+Renaming the columns for the carpinteria shapefile below.
+```{r}
+
+carp_sf <- rename(carp_sf, 
+                  "Acreage" = "Acres",
+                  "Treatment Type" = "Activity",
+                  "Project Name" = "Name_Treat",
+                  "Other" = "fuel_type",
+                  "Date Completed" = "Comp_Date",
+                  "Original Shapefile Name" = "layer"
+)
+
+```
+
+
+Adding 2 extra  needed columns for the Carpinteria data
+```{r}
+
+carp_sf <- mutate(carp_sf, 
+                  "Date Acquired" = "Aug 23, 2022",
+                  "Agency" = "Carpinteria"
+)
+
+```
+
+
+Below is needed for merge to work as "Date Completed" for the carp data is read in as a "double" and not "character" like the other 5 shapefile data so by using as.character I set it from double to character so merge can be completed without error.
+```{r}
+
+typeof(carp_sf$`Date Completed`)
+
+carp_sf$`Date Completed` <- as.character(carp_sf$`Date Completed`)
+
+```
+
+
+Below [merge_5] is only required if needed but I am merging 6 of the current shapfiles together then using st_write to export a single merged shapefile for GIS software.
+```{r}
+
+merge_5 <- bind_rows(graz_sf,
+                     mixed_sf,
+                     sbc_future_sf,
+                     veg_comp_sf,
+                     fuel_treatments_sf, 
+                     carp_sf
+)
+
+st_write(merge_5, "merge_5.shp")
+
+```
+
+
+Below I am reading in the new/additional shapefile
+```{r}
+
+rob_sbc_sf <- here("/Users/daniellopez/Downloads/Internship Data Packs/ROBH_DATA.shp") %>%
+  st_read()
+
+```
+
+
+After reading in the shapefile from above I am using select to pick the columns I only want and will be using from the shapefile
+```{r}
+
+rob_sbc_sf <- select(rob_sbc_sf, 
+                     "Acres", 
+                     "Name", 
+                     "Agency", 
+                     "Fuel_Type", 
+                     "Activity", 
+                     "layer",
+)
+
+```
+
+
+Here I am renaming the columns to the requested names
+```{r}
+
+rob_sbc_sf <- rename(rob_sbc_sf, 
+                     "Acreage" = "Acres", 
+                     "Project Name" = "Name", 
+                     "Treatment Type" = "Activity", 
+                     "Original Shapefile Name" = "layer", 
+                     "Other" = "Fuel_Type"
+)
+
+```
+
+
+I am adding 2 extra columns needed for data table using "mutate" 
+```{r}
+
+rob_sbc_sf <- mutate(rob_sbc_sf, 
+                     "Date Acquired" = "Aug 29, 2022", 
+                     "Date Completed" = "NA"
+)
+
+
+```
+
+
+Below I am merging all shape files together and then using "select" to reorder the columns to preference
+```{r}
+
+merge_6 <- bind_rows(graz_sf,
+                     mixed_sf,
+                     sbc_future_sf,
+                     veg_comp_sf,
+                     fuel_treatments_sf,
+                     carp_sf,
+                     rob_sbc_sf
+)
+
+
+merge_6 <- select(merge_6, 
+          1, 2, 3, 
+          4, 6, 9, 
+          5, 7, 8
+)
+
+"st_write is me exporting the final merge so that it can be opened in GIS software as a shapefile"
+
+st_write(merge_6, "Final_Merge.shp")
+st_write(merge_6, "Final_Merge.csv")
+
+```
+
+
+~ By: Daniel Lopez
+September 16, 2022
