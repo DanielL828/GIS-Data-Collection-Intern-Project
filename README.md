@@ -2,7 +2,7 @@
 
 Hello this is my project I worked on during my time as an Data Collection Intern for the Santa Barbara County Fire Safe Council using GIS softwares and coding.
 
-The following attachements include my R Markdown code used to complete the program, QGIS file to view the shapefiles, A metadata file contianing useful information and pictures of the plotted shapefiles, and lastly 
+The following attachements include my R Markdown code used to complete the program, QGIS file to view the shapefiles, and lastly a metadata PDF contianing useful information and pictures of the plotted shapefiles.
 
 Metadata: 
 ##
